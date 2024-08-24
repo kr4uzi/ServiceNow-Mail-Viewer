@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_ui_page">
+    <sys_ui_page action="INSERT_OR_UPDATE">
+        <category>general</category>
+        <client_script><![CDATA[function isSupportedFileAPI() {
+	return window.File && window.FileReader && window.FileList && window.Blob;
+}
+
+function formatEmail(data) {
+	return data.name ? data.name + " [" + data.email + "]" : data.email;
+}
+
+function parseHeaders(headers) {
+	var parsedHeaders = {};
+	if (!headers) {
+		return parsedHeaders;
+	}
+	var headerRegEx = /(.*)\: (.*)/g;
+	while (m = headerRegEx.exec(headers)) {
+		// todo: Pay attention! Header can be presented many times (e.g. Received). Handle it, if needed!
+		parsedHeaders[m[1]] = m[2];
+	}
+	return parsedHeaders;
+}
+
+function getMsgDate(rawHeaders) {
+	// Example for the Date header
+	var headers = parseHeaders(rawHeaders);
+	if (!headers['Date']) {
+		return '-';
+	}
+	return new Date(headers['Date']);
+}
+
+addLoadEvent(function () {
+	if (isSupportedFileAPI()) {
+		var req = new XMLHttpRequest();
+		req.responseType = 'blob';
+		req.open('get', '/api/now/attachment/' + GlideModal.get().getPreference("attachment") + '/file', true); // ATF overrides open but fails to set the default async value (which is true)
+		req.setRequestHeader('X-UserToken', window.g_ck);
+		req.addEventListener('load', function () {
+			$j('.loading-block').hide();
+			
+			var metadata = JSON.parse(req.getResponseHeader('X-Attachment-Metadata'));
+			if (!metadata.file_name.endsWith('.msg')) {
+				$j('.incorrect-type').show();
+				return;
+			}
+
+			var fileReader = new FileReader();
+			fileReader.onload = function (evt) {
+				var buffer = evt.target.result;
+				var msgReader = new MSGReader(buffer);
+				var fileData = msgReader.getFileData();
+				if (!fileData.error) {
+					$j('.msg-example .msg-from').html(formatEmail({ name: fileData.senderName, email: fileData.senderEmail }));
+
+					$j('.msg-example .msg-to').html(jQuery.map(fileData.recipients, function (recipient, i) {
+						return formatEmail(recipient);
+					}).join('<br/>'));
+					$j('.msg-example .msg-date').html(getMsgDate(fileData.headers));
+					$j('.msg-example .msg-subject').html(fileData.subject);
+					$j('.msg-example .msg-body').html(fileData.body.replaceAll("\n", "<br />"));
+					// $j('.msg-example .msg-body').html(
+					//     fileData.body ? fileData.body.substring(0, Math.min(500, fileData.body.length))
+					//     + (fileData.body.length > 500 ? '...' : '') : '');
+					if (fileData.bodyHTML) {
+						$j('.msg-example .msg-body-html').html(fileData.bodyHTML).closest('div.field-block').show();
+					} else {
+						$j('.msg-example .msg-body-html').closest('div.field-block').hide();
+					}
+					$j('.msg-example .msg-attachment').html(jQuery.map(fileData.attachments, function (attachment, i) {
+						var file = msgReader.getAttachment(i);
+						var imgExt = [".png", ".jpg", ".jpeg"].find(ext => file.fileName.endsWith(ext));
+						if (imgExt) {
+							var dataSrc = String.fromCharCode.apply(null, file.content);
+							var mimeType = attachment.mimeType || ("image/" + imgExt.substr(1));
+							return "<img src='data:" + mimeType + ";base64," + btoa(dataSrc) + "' />";
+						}
+
+						var fileUrl = URL.createObjectURL(new File([file.content], attachment.fileName,
+							{ type: attachment.mimeType ? attachment.mimeType : "application/octet-stream" }));
+						return attachment.fileName + ' [' + attachment.contentLength + 'bytes]' +
+							(attachment.pidContentId ? '; ID = ' + attachment.pidContentId : '') +
+							'; <a href="' + fileUrl + '">Download</a>';
+					}).join('<br/>'));
+					$j('.msg-info').show();
+
+					// Use msgReader.getAttachment to access attachment content ...
+					// msgReader.getAttachment(0) or msgReader.getAttachment(fileData.attachments[0])
+				} else {
+					$j('.msg-info').hide();
+					$j('.incorrect-type').show();
+				}
+			};
+
+			fileReader.readAsArrayBuffer(new File([req.response], metadata.file_name, {
+				type: metadata.content_type
+			}));
+		});
+
+		req.send();
+	}
+});]]></client_script>
+        <description>Basic HTML rendering of a given attachment. &#13;
+The Mail Viewer app is mostly an adoption of the following "MSG Reader" application:&#13;
+https://github.com/ykarpovich/msg.reader&#13;
+(licensed under Apache 2.0)</description>
+        <direct>false</direct>
+        <endpoint>x_376096_mail_view_render.do</endpoint>
+        <html><![CDATA[<?xml version="1.0" encoding="utf-8" ?>
+<j:jelly trim="false" xmlns:j="jelly:core" xmlns:g="glide" xmlns:j2="null" xmlns:g2="null">
+	<g:requires name="x_376096_mail_view.DataStream.jsdbx?v=1.0" />
+	<g:requires name="x_376096_mail_view.MSGReader.jsdbx?v=1.0" />
+	<style type="text/css">
+		.info-box {
+			color: #F5F5F5;
+			padding: 2em;
+		}
+
+		.error-msg {
+			background-color: #D80A0A;
+		}
+
+		.wizard-msg {
+			background-color: #673AB7;
+		}
+
+		.field-block {
+			padding: 1em 2em;
+		}
+
+		.field-block .field-label {
+			font-weight: bold;
+		}
+	</style>
+	<div class="msg-example">
+		<div class="loading-block">
+			<img src="/images/ajax-loader.gif" alt="loading ..." />
+		</div>
+		<div class="msg-info" style="display: none;">
+			<div class="field-block">
+				<div class="field-label">From</div>
+				<div class="msg-from"></div>
+			</div>
+			<div class="field-block">
+				<div class="field-label">To</div>
+				<div class="msg-to"></div>
+			</div>
+			<div class="field-block">
+				<div class="field-label">Date (from Headers, example)</div>
+				<div class="msg-date"></div>
+			</div>
+			<div class="field-block">
+				<div class="field-label">Subject</div>
+				<div class="msg-subject"></div>
+			</div>
+			<div class="field-block">
+				<div class="field-label">Body</div>
+				<div class="msg-body"></div>
+			</div>
+			<div class="field-block" style="display: none;">
+				<div class="field-label">HTML Body</div>
+				<div class="msg-body-html"></div>
+			</div>
+			<div class="field-block">
+				<div class="field-label">Attachments</div>
+				<div class="msg-attachment"></div>
+			</div>
+		</div>
+	</div>
+
+	<div class="incorrect-type info-box error-msg" style="display: none;">
+		Sorry, the file you selected is not MSG type
+	</div>
+
+	<div class="file-api-not-available info-box error-msg" style="display: none;">
+		Sorry, your browser isn't supported
+	</div>
+</j:jelly>]]></html>
+        <name>render</name>
+        <processing_script/>
+        <sys_class_name>sys_ui_page</sys_class_name>
+        <sys_created_by>markus.kraus</sys_created_by>
+        <sys_created_on>2024-08-24 00:10:47</sys_created_on>
+        <sys_id>d7e47680939012d0e02873718bba1049</sys_id>
+        <sys_mod_count>26</sys_mod_count>
+        <sys_name>render</sys_name>
+        <sys_package display_value="Mail Viewer" source="x_376096_mail_view">8f996a08935cde90e02873718bba1002</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="Mail Viewer">8f996a08935cde90e02873718bba1002</sys_scope>
+        <sys_update_name>sys_ui_page_d7e47680939012d0e02873718bba1049</sys_update_name>
+        <sys_updated_by>markus.kraus</sys_updated_by>
+        <sys_updated_on>2024-08-24 01:20:58</sys_updated_on>
+    </sys_ui_page>
+</record_update>

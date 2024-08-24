@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_package_dependency_m2m">
+    <sys_package_dependency_m2m action="INSERT_OR_UPDATE">
+        <dependency display_value="ServiceNow Document Viewer" source="com.snc.documentviewer">3524c83af836021008dd9cfea425ac10</dependency>
+        <min_version>1.0.0</min_version>
+        <sys_created_by>markus.kraus</sys_created_by>
+        <sys_created_on>2024-08-24 01:27:08</sys_created_on>
+        <sys_id>d6b70748935812d0e02873718bba1054</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_package display_value="Mail Viewer" source="x_376096_mail_view">8f996a08935cde90e02873718bba1002</sys_package>
+        <sys_updated_by>markus.kraus</sys_updated_by>
+        <sys_updated_on>2024-08-24 01:27:08</sys_updated_on>
+    </sys_package_dependency_m2m>
+</record_update>

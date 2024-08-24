@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update sys_domain="global" table="sys_script_client">
+    <sys_script_client action="INSERT_OR_UPDATE">
+        <active>true</active>
+        <applies_extended>true</applies_extended>
+        <condition/>
+        <description/>
+        <field/>
+        <global>true</global>
+        <isolate_script>true</isolate_script>
+        <messages/>
+        <name>Mail Viewer - Replace View Links</name>
+        <order/>
+        <script><![CDATA[function onLoad() {
+	setTimeout(function () {
+		var $window = this;
+		Array.prototype.slice.call($window.document.querySelectorAll('a.attachment[class*="view_"]')).forEach(function (node) {
+			var dataSet = node.dataset;
+			var attachmentSysID = '';
+			var attachmentFilename = '';
+			Object.keys(dataSet).forEach(function (dataAttr) {
+				var dataAttrLowerCase = dataAttr.toLowerCase();
+				if (dataAttrLowerCase.includes('filename')) {
+					attachmentFilename = dataSet[dataAttr];
+				} else if (dataAttrLowerCase.includes('attachmentid')) {
+					attachmentSysID = dataSet[dataAttr];
+				}
+			});
+
+			if (attachmentSysID && (attachmentFilename.endsWith('.eml') || attachmentFilename.endsWith('.msg'))) {
+				node.onclick = function () {
+					var gm = new GlideModal('x_376096_mail_view_render', false, 'modal-95');
+					gm.setTitle(getMessage('Mail Viewer'));
+					gm.setPreference('attachment', attachmentSysID);
+					gm.render();
+				};
+			}
+		});
+	});
+}]]></script>
+        <sys_class_name>sys_script_client</sys_class_name>
+        <sys_created_by>markus.kraus</sys_created_by>
+        <sys_created_on>2024-08-24 00:01:55</sys_created_on>
+        <sys_domain>global</sys_domain>
+        <sys_domain_path>/</sys_domain_path>
+        <sys_id>8b5da28093dcde90e02873718bba10ca</sys_id>
+        <sys_mod_count>5</sys_mod_count>
+        <sys_name>Mail Viewer - Replace View Links</sys_name>
+        <sys_overrides/>
+        <sys_package display_value="Mail Viewer" source="x_376096_mail_view">8f996a08935cde90e02873718bba1002</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="Mail Viewer">8f996a08935cde90e02873718bba1002</sys_scope>
+        <sys_update_name>sys_script_client_8b5da28093dcde90e02873718bba10ca</sys_update_name>
+        <sys_updated_by>markus.kraus</sys_updated_by>
+        <sys_updated_on>2024-08-24 01:09:51</sys_updated_on>
+        <table>task</table>
+        <type>onLoad</type>
+        <ui_type>0</ui_type>
+        <view/>
+    </sys_script_client>
+</record_update>
